@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# Specify the Pokémon name
+pokemon_name="pikachu"
+
+# Specify the API URL
+api_url="https://pokeapi.co/api/v2/pokemon/${pokemon_name}"
+
+# Make the API request and save the response to a JSON file
+curl -s -f "${api_url}" -o data.json || echo "Request failed" >> errors.txt
