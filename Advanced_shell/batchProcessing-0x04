@@ -82,7 +82,7 @@ done
 
 # Wait for all background processes to complete.
 # The 'wait' command will pause the main script execution until all
-# jobs launched with '&' in the current shell are finished.
+# jobs launched with '&' in the current shell are finished. kill
 echo "All fetch requests sent. Waiting for background processes to complete..."
 wait
 
