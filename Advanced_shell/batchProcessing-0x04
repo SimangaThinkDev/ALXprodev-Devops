@@ -1,0 +1,89 @@
+#!/bin/bash
+
+# Define the list of Pokémon names to fetch
+pokemon_list=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
+
+# Define the directory where the fetched JSON data will be stored
+output_dir="pokemon_data"
+
+# Create the output directory if it doesn't already exist.
+# The -p flag ensures that no error is thrown if the directory exists.
+mkdir -p "$output_dir"
+
+# -----------------------------------------------------------------------------
+# Function: fetch_pokemon_data
+# Description: Fetches data for a single Pokémon from the PokeAPI.
+#              Includes retry logic for failed API requests.
+# Arguments:
+#   $1: The name of the Pokémon to fetch.
+# -----------------------------------------------------------------------------
+fetch_pokemon_data() {
+    local pokemon_name=$1
+    local api_url="https://pokeapi.co/api/v2/pokemon/${pokemon_name}"
+    local output_file="${output_dir}/${pokemon_name}.json"
+    
+    local retries=0
+    local max_retries=3 # Maximum number of retry attempts
+    local success=false
+    local delay_between_retries=2 # Seconds to wait between retry attempts
+
+    echo "Fetching data for ${pokemon_name}..."
+    
+    # Loop to attempt fetching data up to max_retries times
+    while [ "$retries" -lt "$max_retries" ]; do
+        # Execute the curl command to fetch data.
+        # -s: Silent mode (hides progress meter and error messages for cleaner output).
+        # -f: Fail silently on HTTP errors (e.g., 404 Not Found, 500 Server Error).
+        # -o: Output to the specified file.
+        curl -s -f "${api_url}" -o "${output_file}"
+        
+        # Check the exit status of the last executed command (curl).
+        # An exit status of 0 indicates success.
+        if [ $? -eq 0 ]; then
+            echo "Saved data to ${output_file} ✅"
+            success=true
+            break # Exit the retry loop as the fetch was successful
+        else
+            retries=$((retries + 1)) # Increment retry counter
+            # If not all retries have been exhausted, inform the user and wait before retrying
+            if [ "$retries" -lt "$max_retries" ]; then
+                echo "Attempt $retries of $max_retries failed for ${pokemon_name}. Retrying in ${delay_between_retries} seconds..."
+                sleep "${delay_between_retries}"
+            fi
+        fi
+    done
+    
+    # If fetching was not successful after all retries, log the final failure.
+    if [ "$success" = false ]; then
+        echo "Failed to fetch data for ${pokemon_name} after ${max_retries} attempts. Skipping. ❌"
+    fi
+}
+
+# -----------------------------------------------------------------------------
+# Main Script Execution
+# -----------------------------------------------------------------------------
+
+echo "Starting parallel data fetching for Pokémon..." 
+
+# Iterate through each Pokémon in the list
+for pokemon_name in "${pokemon_list[@]}"
+do
+    # Call the fetch_pokemon_data function for each Pokémon in the background.
+    # The '&' symbol detaches the function from the current shell, allowing
+    # the loop to continue to the next Pokémon immediately,
+    # initiating parallel downloads.
+    fetch_pokemon_data "$pokemon_name" &
+    
+    # A small delay between launching background processes.
+    # This helps to prevent overwhelming the API with an initial burst of requests
+    # and ensures child processes are properly forked, especially for very large lists.
+    sleep 0.1
+done
+
+# Wait for all background processes to complete.
+# The 'wait' command will pause the main script execution until all
+# jobs launched with '&' in the current shell are finished.
+echo "All fetch requests sent. Waiting for background processes to complete..."
+wait
+
+echo "All parallel Pokémon data fetching complete."
