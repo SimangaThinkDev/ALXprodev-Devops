@@ -18,7 +18,7 @@ types=$(jq -r '.types[].type.name' data.json | sed 's/\b\(.\)/\u\1/g' | sed ':a;
 
 formatted_height=$(awk "BEGIN { printf \"%.1f\", ${height}/10 }" < /dev/null)
 
-echo "${name} is of type ${type}, weighs ${formatted_weight}kg, and is ${formatted_height}m tall."
+echo "$name is of type $type, weighs ${formatted_weight}kg, and is ${formatted_height}m tall."
 
 # Optional: Clean up the temporary file
 # rm data.json
