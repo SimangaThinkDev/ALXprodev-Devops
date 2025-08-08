@@ -1,0 +1,70 @@
+#!/bin/bash
+
+# Define the directory where Pokémon JSON files are located
+data_dir="pokemon_data"
+# Define the name of the output CSV file
+report_file="pokemon_report.csv"
+
+# --- Create the CSV Report ---
+
+echo "CSV Report generated at: ${report_file}"
+echo "" # Empty line for cleaner output
+
+# Add CSV headers
+echo "Name,Height (m),Weight (kg)" > "${report_file}"
+
+# Initialize arrays to store heights and weights for average calculation
+declare -a all_heights
+declare -a all_weights
+
+# Loop through each JSON file in the data directory
+for file in "${data_dir}"/*.json; do
+    # Check if the file exists and is a regular file
+    if [[ -f "$file" ]]; then
+        # Extract name, height, and weight using jq
+        # -r for raw output
+        # sed for capitalizing the first letter of the name
+        pokemon_name=$(jq -r '.name' "$file" | sed 's/\b\(.\)/\u\1/g')
+        raw_height=$(jq -r '.height' "$file") # Height is in decimetres
+        raw_weight=$(jq -r '.weight' "$file") # Weight is in hectograms
+
+        # Convert height to meters (divide by 10)
+        # Using awk for floating point division
+        height_m=$(awk "BEGIN { printf \"%.1f\", ${raw_height}/10 }")
+
+        # Convert weight to kilograms (divide by 10)
+        # Using awk for floating point division
+        weight_kg=$(awk "BEGIN { printf \"%.1f\", ${raw_weight}/10 }")
+
+        # Append data to the CSV file
+        echo "${pokemon_name},${height_m},${weight_kg}" >> "${report_file}"
+
+        # Store height and weight for average calculation
+        all_heights+=("$height_m")
+        all_weights+=("$weight_kg")
+    fi
+done
+
+# --- Calculate Averages ---
+
+# Join the array elements with '+' for awk
+height_sum_expr=$(IFS=+; echo "${all_heights[*]}")
+weight_sum_expr=$(IFS=+; echo "${all_weights[*]}")
+
+# Get the count of Pokémon
+num_pokemon=${#all_heights[@]}
+
+# Calculate average height using awk
+# Use 'scale=2' for precision and 'printf' for formatting
+if (( num_pokemon > 0 )); then
+    avg_height=$(awk "BEGIN { sum = ${height_sum_expr}; printf \"%.2f\", sum / ${num_pokemon} }")
+    avg_weight=$(awk "BEGIN { sum = ${weight_sum_expr}; printf \"%.2f\", sum / ${num_pokemon} }")
+else
+    avg_height="0.00"
+    avg_weight="0.00"
+fi
+
+echo "" # Empty line for cleaner output
+echo "Average Height: ${avg_height} m"
+echo "Average Weight: ${avg_weight} kg"
+
