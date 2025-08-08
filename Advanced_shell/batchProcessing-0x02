@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define the list of Pokémon names
-pokemon_list=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
+pokemon_list=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon" "invalid_pokemon" "pikachu") # Added an invalid name to test error handling
 
 # Define the directory to store the data
 output_dir="pokemon_data"
@@ -18,19 +18,37 @@ do
     # Specify the output file path
     output_file="${output_dir}/${pokemon_name}.json"
     
+    # Initialize retry counters
+    retries=0
+    max_retries=3
+    success=false
+    
     # Inform the user about the current request
     echo "Fetching data for ${pokemon_name}..."
     
-    # Make the API request and save the response to the specified file
-    curl -s -f "${api_url}" -o "${output_file}"
+    # --- Retry Mechanism ---
+    while [ "$retries" -lt 3 ]; do
+        # Make the API request and save the response
+        curl -s -f "${api_url}" -o "${output_file}"
+        
+        # Check the exit status of the curl command
+        if [ $? -eq 0 ]; then
+            echo "Saved data to ${output_file} ✅"
+            success=true
+            break # Exit the while loop on success
+        else
+            retries=$((retries + 1))
+            echo "Attempt $retries of $max_retries failed. Retrying in 2 seconds..."
+            sleep 2 # Delay before the next retry
+        fi
+    done
     
-    # Check if the curl command was successful
-    if [ $? -eq 0 ]; then
-        echo "Saved data to ${output_file} ✅"
-    else
-        echo "Failed to fetch data for ${pokemon_name} ❌"
+    # --- Error Logging ---
+    # If the success flag is still false after all retries, log the final error
+    if [ "$success" = false ]; then
+        echo "Failed to fetch data for ${pokemon_name} after $max_retries attempts. Skipping. ❌"
     fi
     
-    # Add a delay to handle rate-limiting
+    # Add a delay between requests to handle API rate limiting
     sleep 1
 done
